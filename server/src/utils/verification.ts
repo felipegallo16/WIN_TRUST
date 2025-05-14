@@ -20,6 +20,7 @@ export const verifyWorldIDProof = async (
         proof: proofData.proof,
         merkle_root: proofData.merkle_root,
         nullifier_hash: proofData.nullifier_hash,
+        verification_level: proofData.verification_level
       },
       process.env.APP_ID || '',
       action,
