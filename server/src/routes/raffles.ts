@@ -1,7 +1,7 @@
-import express, { Request, Response, NextFunction, RequestHandler } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { verifyWorldIDProof } from '../utils/verification';
 import { selectRaffleWinner } from '../utils/raffle';
-import { maskNullifierHash, generateActionId } from '../utils/security';
+import { maskNullifierHash } from '../utils/security';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { validateParticipacion, validateRaffleId } from '../middleware/validators';
 import {
@@ -16,7 +16,7 @@ import { ProofData } from '../models/types';
 const router = express.Router();
 
 // GET /
-const getRoot = (req: Request, res: Response): void => {
+router.get('/', (req: Request, res: Response) => {
   res.json({
     message: 'WinTrust API',
     version: '1.0.0',
@@ -28,42 +28,42 @@ const getRoot = (req: Request, res: Response): void => {
       'POST /sorteos/crear': 'Crea un nuevo sorteo (solo admin)'
     }
   });
-};
+});
 
 // GET /sorteos
-const getRaffles = (req: Request, res: Response): void => {
+router.get('/sorteos', (req: Request, res: Response) => {
   const activeRaffles = getActiveRaffles();
   res.json(activeRaffles);
-};
+});
 
 // GET /sorteos/:id
-const getRaffleById = (req: Request, res: Response): void => {
+router.get('/sorteos/:id', validateRaffleId, (req: Request, res: Response) => {
   const raffle = getRaffle(req.params.id);
   if (!raffle) {
     res.status(404).json({ error: 'Sorteo no encontrado' });
     return;
   }
   res.json(raffle);
-};
+});
 
 // POST /sorteos/crear
-const createNewRaffle = (req: Request, res: Response): void => {
+router.post('/sorteos/crear', (req: Request, res: Response) => {
   const raffle = {
     id: Date.now().toString(),
     nombre: req.body.nombre || "Sorteo de prueba",
     premio: req.body.premio || "100 WLD",
     descripcion: req.body.descripcion || "Un sorteo de prueba",
     precio_por_numero: req.body.precio_por_numero || 1,
-    fecha_fin: new Date(req.body.fecha_fin || Date.now() + 24 * 60 * 60 * 1000), // 24 horas por defecto
+    fecha_fin: new Date(req.body.fecha_fin || Date.now() + 24 * 60 * 60 * 1000),
     total_numeros: req.body.total_numeros || 100,
     numeros_vendidos: [],
   };
   createRaffle(raffle);
   res.json(raffle);
-};
+});
 
-// POST /participar
-const participate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+// POST /sorteos/participar
+router.post('/sorteos/participar', rateLimiter, validateParticipacion, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { raffleId, numero_elegido, proof, action } = req.body;
 
@@ -122,10 +122,10 @@ const participate = async (req: Request, res: Response, next: NextFunction): Pro
   } catch (error) {
     next(error);
   }
-};
+});
 
 // GET /sorteos/:id/ganador
-const getWinner = (req: Request, res: Response): void => {
+router.get('/sorteos/:id/ganador', validateRaffleId, (req: Request, res: Response) => {
   const raffle = getRaffle(req.params.id);
   if (!raffle) {
     res.status(404).json({ error: 'Sorteo no encontrado' });
@@ -133,10 +133,8 @@ const getWinner = (req: Request, res: Response): void => {
   }
 
   if (!raffle.ganador) {
-    // Check if raffle has ended and select winner
     if (new Date() > raffle.fecha_fin) {
       selectRaffleWinner(req.params.id);
-      // Get updated raffle
       const updatedRaffle = getRaffle(req.params.id);
       if (updatedRaffle?.ganador) {
         res.json({
@@ -154,14 +152,6 @@ const getWinner = (req: Request, res: Response): void => {
     numero: raffle.ganador.numero,
     nullifier_hash_masked: maskNullifierHash(raffle.ganador.nullifier_hash)
   });
-};
-
-// Register routes
-router.get('/', getRoot);
-router.get('/', getRaffles);
-router.get('/:id', validateRaffleId, getRaffleById);
-router.post('/crear', createNewRaffle);
-router.post('/participar', rateLimiter, validateParticipacion, participate);
-router.get('/:id/ganador', validateRaffleId, getWinner);
+});
 
 export default router;
