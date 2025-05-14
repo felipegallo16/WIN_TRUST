@@ -1,4 +1,4 @@
-import { verifyCloudProof } from '@worldcoin/idkit';
+import { verifyCloudProof, VerificationLevel } from '@worldcoin/idkit';
 import { ProofData } from '../models/types';
 import { checkNullifierHashReuse } from './security';
 
@@ -20,11 +20,11 @@ export const verifyWorldIDProof = async (
         proof: proofData.proof,
         merkle_root: proofData.merkle_root,
         nullifier_hash: proofData.nullifier_hash,
-        verification_level: proofData.verification_level
+        verification_level: proofData.verification_level as VerificationLevel
       },
-      process.env.APP_ID || '',
+      (process.env.APP_ID as `app_${string}`) || ('app_default' as `app_${string}`),
       action,
-      action // Use the action as signal
+      action
     );
 
     if (!result.success) {
