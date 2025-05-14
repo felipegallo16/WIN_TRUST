@@ -16,7 +16,7 @@ import { ProofData } from '../models/types';
 const router = express.Router();
 
 // GET /
-const getRoot: RequestHandler = (req, res) => {
+const getRoot = (req: Request, res: Response): void => {
   res.json({
     message: 'WinTrust API',
     version: '1.0.0',
@@ -31,13 +31,13 @@ const getRoot: RequestHandler = (req, res) => {
 };
 
 // GET /sorteos
-const getRaffles: RequestHandler = (req, res) => {
+const getRaffles = (req: Request, res: Response): void => {
   const activeRaffles = getActiveRaffles();
   res.json(activeRaffles);
 };
 
 // GET /sorteos/:id
-const getRaffleById: RequestHandler = (req, res) => {
+const getRaffleById = (req: Request, res: Response): void => {
   const raffle = getRaffle(req.params.id);
   if (!raffle) {
     res.status(404).json({ error: 'Sorteo no encontrado' });
@@ -47,7 +47,7 @@ const getRaffleById: RequestHandler = (req, res) => {
 };
 
 // POST /sorteos/crear
-const createNewRaffle: RequestHandler = (req, res) => {
+const createNewRaffle = (req: Request, res: Response): void => {
   const raffle = {
     id: Date.now().toString(),
     nombre: req.body.nombre || "Sorteo de prueba",
@@ -67,7 +67,6 @@ const participate = async (req: Request, res: Response, next: NextFunction): Pro
   try {
     const { raffleId, numero_elegido, proof, action } = req.body;
 
-    // Verify World ID proof with action
     const verificationResult = await verifyWorldIDProof(proof as ProofData, action);
     if (!verificationResult.success) {
       res.status(400).json({ error: verificationResult.error });
@@ -80,30 +79,24 @@ const participate = async (req: Request, res: Response, next: NextFunction): Pro
       return;
     }
 
-    // Check if raffle is still active
     if (new Date() > raffle.fecha_fin) {
       res.status(400).json({ error: 'El sorteo ha finalizado' });
       return;
     }
 
-    // Check if there are numbers available
     if (raffle.numeros_vendidos.length >= raffle.total_numeros) {
       res.status(400).json({ error: 'No hay números disponibles' });
       return;
     }
 
-    // Assign number
     let numero_asignado = numero_elegido;
     if (!numero_elegido) {
-      // Find first available number
       const numeros_disponibles = Array.from(
         { length: raffle.total_numeros },
         (_, i) => i + 1
       ).filter(n => !raffle.numeros_vendidos.includes(n));
-      
       numero_asignado = numeros_disponibles[Math.floor(Math.random() * numeros_disponibles.length)];
     } else {
-      // Validate chosen number
       if (numero_elegido < 1 || numero_elegido > raffle.total_numeros) {
         res.status(400).json({ error: 'Número fuera de rango' });
         return;
@@ -114,7 +107,6 @@ const participate = async (req: Request, res: Response, next: NextFunction): Pro
       }
     }
 
-    // Add participation
     addParticipacion({
       raffleId,
       nullifier_hash: proof.nullifier_hash,
@@ -133,7 +125,7 @@ const participate = async (req: Request, res: Response, next: NextFunction): Pro
 };
 
 // GET /sorteos/:id/ganador
-const getWinner: RequestHandler = (req, res) => {
+const getWinner = (req: Request, res: Response): void => {
   const raffle = getRaffle(req.params.id);
   if (!raffle) {
     res.status(404).json({ error: 'Sorteo no encontrado' });
