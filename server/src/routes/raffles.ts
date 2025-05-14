@@ -63,68 +63,67 @@ router.post('/sorteos/crear', (req: Request, res: Response) => {
 });
 
 // POST /sorteos/participar
-const handleParticipate: RequestHandler = async (req, res, next) => {
-  try {
-    const { raffleId, numero_elegido, proof, action } = req.body;
+router.post('/sorteos/participar', rateLimiter, validateParticipacion, (req: Request, res: Response, next: NextFunction): void => {
+  const { raffleId, numero_elegido, proof, action } = req.body;
 
-    const verificationResult = await verifyWorldIDProof(proof as ProofData, action);
-    if (!verificationResult.success) {
-      res.status(400).json({ error: verificationResult.error });
-      return;
-    }
-
-    const raffle = getRaffle(raffleId);
-    if (!raffle) {
-      res.status(404).json({ error: 'Sorteo no encontrado' });
-      return;
-    }
-
-    if (new Date() > raffle.fecha_fin) {
-      res.status(400).json({ error: 'El sorteo ha finalizado' });
-      return;
-    }
-
-    if (raffle.numeros_vendidos.length >= raffle.total_numeros) {
-      res.status(400).json({ error: 'No hay números disponibles' });
-      return;
-    }
-
-    let numero_asignado = numero_elegido;
-    if (!numero_elegido) {
-      const numeros_disponibles = Array.from(
-        { length: raffle.total_numeros },
-        (_, i) => i + 1
-      ).filter(n => !raffle.numeros_vendidos.includes(n));
-      numero_asignado = numeros_disponibles[Math.floor(Math.random() * numeros_disponibles.length)];
-    } else {
-      if (numero_elegido < 1 || numero_elegido > raffle.total_numeros) {
-        res.status(400).json({ error: 'Número fuera de rango' });
+  verifyWorldIDProof(proof as ProofData, action)
+    .then(verificationResult => {
+      if (!verificationResult.success) {
+        res.status(400).json({ error: verificationResult.error });
         return;
       }
-      if (raffle.numeros_vendidos.includes(numero_elegido)) {
-        res.status(400).json({ error: 'Número ya vendido' });
+
+      const raffle = getRaffle(raffleId);
+      if (!raffle) {
+        res.status(404).json({ error: 'Sorteo no encontrado' });
         return;
       }
-    }
 
-    addParticipacion({
-      raffleId,
-      nullifier_hash: proof.nullifier_hash,
-      numero_asignado,
-      fecha: new Date(),
+      if (new Date() > raffle.fecha_fin) {
+        res.status(400).json({ error: 'El sorteo ha finalizado' });
+        return;
+      }
+
+      if (raffle.numeros_vendidos.length >= raffle.total_numeros) {
+        res.status(400).json({ error: 'No hay números disponibles' });
+        return;
+      }
+
+      let numero_asignado = numero_elegido;
+      if (!numero_elegido) {
+        const numeros_disponibles = Array.from(
+          { length: raffle.total_numeros },
+          (_, i) => i + 1
+        ).filter(n => !raffle.numeros_vendidos.includes(n));
+        numero_asignado = numeros_disponibles[Math.floor(Math.random() * numeros_disponibles.length)];
+      } else {
+        if (numero_elegido < 1 || numero_elegido > raffle.total_numeros) {
+          res.status(400).json({ error: 'Número fuera de rango' });
+          return;
+        }
+        if (raffle.numeros_vendidos.includes(numero_elegido)) {
+          res.status(400).json({ error: 'Número ya vendido' });
+          return;
+        }
+      }
+
+      addParticipacion({
+        raffleId,
+        nullifier_hash: proof.nullifier_hash,
+        numero_asignado,
+        fecha: new Date(),
+      });
+
+      res.json({
+        mensaje: 'Participación exitosa',
+        numero_asignado,
+        nullifier_hash_masked: maskNullifierHash(proof.nullifier_hash)
+      });
+    })
+    .catch(error => {
+      next(error);
     });
-
-    res.json({
-      mensaje: 'Participación exitosa',
-      numero_asignado,
-      nullifier_hash_masked: maskNullifierHash(proof.nullifier_hash)
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-router.post('/sorteos/participar', rateLimiter, validateParticipacion, handleParticipate);
+});
 
 // GET /sorteos/:id/ganador
 router.get('/sorteos/:id/ganador', validateRaffleId, (req: Request, res: Response) => {
