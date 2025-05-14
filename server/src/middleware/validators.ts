@@ -29,8 +29,11 @@ export const validateParticipacion = (req: Request, res: Response, next: NextFun
     'verification_level'
   ];
 
+  // Type assertion for proof object
+  const proofObj = proof as Record<string, unknown>;
+
   for (const field of requiredProofFields) {
-    if (!proof[field] || typeof proof[field] !== 'string') {
+    if (!proofObj[field] || typeof proofObj[field] !== 'string') {
       return res.status(400).json({ error: `Campo ${field} inválido en proof` });
     }
   }
