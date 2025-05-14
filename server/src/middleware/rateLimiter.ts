@@ -11,7 +11,7 @@ const store: RateLimitStore = {};
 const WINDOW_MS = 60 * 1000; // 1 minute
 const MAX_REQUESTS = 10;
 
-export const rateLimiter = (req: Request, res: Response, next: NextFunction) => {
+export const rateLimiter = (req: Request, res: Response, next: NextFunction): void => {
   const ip = req.ip || 'unknown';
   const now = Date.now();
 
@@ -32,9 +32,10 @@ export const rateLimiter = (req: Request, res: Response, next: NextFunction) => 
 
   // Check if rate limit exceeded
   if (store[ip].count >= MAX_REQUESTS) {
-    return res.status(429).json({
+    res.status(429).json({
       error: 'Demasiadas solicitudes. Por favor, intente nuevamente en un minuto.',
     });
+    return;
   }
 
   // Increment counter
@@ -46,4 +47,4 @@ export const rateLimiter = (req: Request, res: Response, next: NextFunction) => 
   res.setHeader('X-RateLimit-Reset', store[ip].resetTime);
 
   next();
-}; 
+};
