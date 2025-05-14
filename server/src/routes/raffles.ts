@@ -63,7 +63,7 @@ const createNewRaffle: RequestHandler = (req, res) => {
 };
 
 // POST /participar
-const participate: RequestHandler = async (req, res, next) => {
+const participate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { raffleId, numero_elegido, proof, action } = req.body;
 
