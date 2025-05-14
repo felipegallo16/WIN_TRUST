@@ -63,69 +63,73 @@ const createNewRaffle: RequestHandler = (req, res) => {
 };
 
 // POST /participar
-const participate: RequestHandler = async (req, res) => {
-  const { raffleId, numero_elegido, proof, action } = req.body;
+const participate: RequestHandler = async (req, res, next) => {
+  try {
+    const { raffleId, numero_elegido, proof, action } = req.body;
 
-  // Verify World ID proof with action
-  const verificationResult = await verifyWorldIDProof(proof as ProofData, action);
-  if (!verificationResult.success) {
-    res.status(400).json({ error: verificationResult.error });
-    return;
-  }
-
-  const raffle = getRaffle(raffleId);
-  if (!raffle) {
-    res.status(404).json({ error: 'Sorteo no encontrado' });
-    return;
-  }
-
-  // Check if raffle is still active
-  if (new Date() > raffle.fecha_fin) {
-    res.status(400).json({ error: 'El sorteo ha finalizado' });
-    return;
-  }
-
-  // Check if there are numbers available
-  if (raffle.numeros_vendidos.length >= raffle.total_numeros) {
-    res.status(400).json({ error: 'No hay números disponibles' });
-    return;
-  }
-
-  // Assign number
-  let numero_asignado = numero_elegido;
-  if (!numero_elegido) {
-    // Find first available number
-    const numeros_disponibles = Array.from(
-      { length: raffle.total_numeros },
-      (_, i) => i + 1
-    ).filter(n => !raffle.numeros_vendidos.includes(n));
-    
-    numero_asignado = numeros_disponibles[Math.floor(Math.random() * numeros_disponibles.length)];
-  } else {
-    // Validate chosen number
-    if (numero_elegido < 1 || numero_elegido > raffle.total_numeros) {
-      res.status(400).json({ error: 'Número fuera de rango' });
+    // Verify World ID proof with action
+    const verificationResult = await verifyWorldIDProof(proof as ProofData, action);
+    if (!verificationResult.success) {
+      res.status(400).json({ error: verificationResult.error });
       return;
     }
-    if (raffle.numeros_vendidos.includes(numero_elegido)) {
-      res.status(400).json({ error: 'Número ya vendido' });
+
+    const raffle = getRaffle(raffleId);
+    if (!raffle) {
+      res.status(404).json({ error: 'Sorteo no encontrado' });
       return;
     }
+
+    // Check if raffle is still active
+    if (new Date() > raffle.fecha_fin) {
+      res.status(400).json({ error: 'El sorteo ha finalizado' });
+      return;
+    }
+
+    // Check if there are numbers available
+    if (raffle.numeros_vendidos.length >= raffle.total_numeros) {
+      res.status(400).json({ error: 'No hay números disponibles' });
+      return;
+    }
+
+    // Assign number
+    let numero_asignado = numero_elegido;
+    if (!numero_elegido) {
+      // Find first available number
+      const numeros_disponibles = Array.from(
+        { length: raffle.total_numeros },
+        (_, i) => i + 1
+      ).filter(n => !raffle.numeros_vendidos.includes(n));
+      
+      numero_asignado = numeros_disponibles[Math.floor(Math.random() * numeros_disponibles.length)];
+    } else {
+      // Validate chosen number
+      if (numero_elegido < 1 || numero_elegido > raffle.total_numeros) {
+        res.status(400).json({ error: 'Número fuera de rango' });
+        return;
+      }
+      if (raffle.numeros_vendidos.includes(numero_elegido)) {
+        res.status(400).json({ error: 'Número ya vendido' });
+        return;
+      }
+    }
+
+    // Add participation
+    addParticipacion({
+      raffleId,
+      nullifier_hash: proof.nullifier_hash,
+      numero_asignado,
+      fecha: new Date(),
+    });
+
+    res.json({
+      mensaje: 'Participación exitosa',
+      numero_asignado,
+      nullifier_hash_masked: maskNullifierHash(proof.nullifier_hash)
+    });
+  } catch (error) {
+    next(error);
   }
-
-  // Add participation
-  addParticipacion({
-    raffleId,
-    nullifier_hash: proof.nullifier_hash,
-    numero_asignado,
-    fecha: new Date(),
-  });
-
-  res.json({
-    mensaje: 'Participación exitosa',
-    numero_asignado,
-    nullifier_hash_masked: maskNullifierHash(proof.nullifier_hash)
-  });
 };
 
 // GET /sorteos/:id/ganador
