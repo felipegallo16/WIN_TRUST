@@ -161,7 +161,7 @@ router.get('/', getRoot);
 router.get('/', getRaffles);
 router.get('/:id', validateRaffleId, getRaffleById);
 router.post('/crear', createNewRaffle);
-router.post('/participar', rateLimiter, validateParticipacion, participate);
-router.get('/:id/ganador', validateRaffleId, getWinner);
+router.post('/participar', rateLimiter, validateParticipacion, participate as RequestHandler);
+router.get('/:id/ganador', validateRaffleId, getWinner as RequestHandler);
 
-export default router; 
+export default router;
