@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express, { Request, Response, NextFunction, RequestHandler } from 'express';
 import { verifyWorldIDProof } from '../utils/verification';
 import { selectRaffleWinner } from '../utils/raffle';
 import { maskNullifierHash } from '../utils/security';
@@ -63,7 +63,7 @@ router.post('/sorteos/crear', (req: Request, res: Response) => {
 });
 
 // POST /sorteos/participar
-router.post('/sorteos/participar', rateLimiter, validateParticipacion, async (req: Request, res: Response, next: NextFunction) => {
+const handleParticipate: RequestHandler = async (req, res, next) => {
   try {
     const { raffleId, numero_elegido, proof, action } = req.body;
 
@@ -122,7 +122,9 @@ router.post('/sorteos/participar', rateLimiter, validateParticipacion, async (re
   } catch (error) {
     next(error);
   }
-});
+};
+
+router.post('/sorteos/participar', rateLimiter, validateParticipacion, handleParticipate);
 
 // GET /sorteos/:id/ganador
 router.get('/sorteos/:id/ganador', validateRaffleId, (req: Request, res: Response) => {
