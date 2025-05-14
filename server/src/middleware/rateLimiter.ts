@@ -12,7 +12,7 @@ const WINDOW_MS = 60 * 1000; // 1 minute
 const MAX_REQUESTS = 10;
 
 export const rateLimiter = (req: Request, res: Response, next: NextFunction) => {
-  const ip = req.ip;
+  const ip = req.ip || 'unknown';
   const now = Date.now();
 
   // Clean up old entries
