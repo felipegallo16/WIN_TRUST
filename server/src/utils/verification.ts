@@ -15,14 +15,16 @@ export const verifyWorldIDProof = async (
       };
     }
 
-    const result = await verifyCloudProof({
-      proof: proofData.proof,
-      merkle_root: proofData.merkle_root,
-      nullifier_hash: proofData.nullifier_hash,
-      action_id: process.env.ACTION_ID || '',
-      signal: action, // Use the unique action as signal
-      app_id: process.env.APP_ID || '',
-    });
+    const result = await verifyCloudProof(
+      {
+        proof: proofData.proof,
+        merkle_root: proofData.merkle_root,
+        nullifier_hash: proofData.nullifier_hash,
+      },
+      process.env.APP_ID || '',
+      action,
+      action // Use the action as signal
+    );
 
     if (!result.success) {
       return {
